@@ -12,13 +12,18 @@ bot = telebot.TeleBot(BOT_TOKEN)
 @bot.message_handler(commands=['getcourses'])
 def getcourses(message):
     print('getcourses_activate')
-    url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_course_get_courses&moodlewsrestformat=json"
+    user = Users.objects.get(id_tg=message.chat.id)
+    id_moodle = user.id_moodle
+    url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_enrol_get_users_courses&userid={id_moodle}&moodlewsrestformat=json"
     response = requests.get(url)
     courses = json.loads(response.text)
-    text = ''
-    for course in courses:
-        text += f"{course['fullname']} ({course['shortname']})\n"
-    bot.send_message(message.chat.id, text)
+    if (not courses):
+        bot.send_message(message.chat.id, "вы не записаны ни на один курс")
+    else:
+        text = ''
+        for course in courses:
+            text += f"{course['fullname']} ({course['shortname']} {course['id']})\n"
+        bot.send_message(message.chat.id, text)
 
 
 @bot.message_handler(commands=['start'])
