@@ -3,3 +3,4 @@ Telegram_bot/__pycache__/
 Telegram_bot/management/__pycache__/
 Telegram_bot/management/commands/__pycache__/
 Basic/__pycache__/
+CRUD/migrations/
