@@ -131,5 +131,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #Настройки бота
 
 BOT_TOKEN = "6044058555:AAHPPGaxT8DJgo_uiT-v-LRmxRKCAXv89lg"
-MOODLE_TOKEN = "c921fc8d0921cb0bfb49c821768d6065"
-MOODLE_URL = "http://192.168.25.128/moodle"
+MOODLE_TOKEN = "c2f09f0db3b317e3f3ee96a15dde2871"
+MOODLE_URL = "https://moodle-monolith.spbstu.ru"

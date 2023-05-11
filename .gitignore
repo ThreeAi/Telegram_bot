@@ -5,3 +5,4 @@ Telegram_bot/management/commands/__pycache__/
 Basic/__pycache__/
 CRUD/migrations/
 CRUD/__pycache__/
+.idea
