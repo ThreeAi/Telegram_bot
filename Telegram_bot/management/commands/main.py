@@ -1,7 +1,7 @@
 import telebot
 import requests
 import json
-
+import datetime
 from telebot import types
 
 from Telegram_bot.models import Users
@@ -34,17 +34,17 @@ def get_courses(message):
         text = ""
         for course in courses:
             course_name = f"{course['fullname']}"
-            button1 = types.InlineKeyboardButton(text=course_name, callback_data=course_name, resize_keyboard=True)
+            button1 = types.InlineKeyboardButton(text=course_name, callback_data=f"{course_name} for_faq", resize_keyboard=True)
             markup.add(button1)
             text += f"{course['fullname']} ({course['shortname']} {course['id']})\n"
         bot.send_message(message.chat.id, "Курсы на которые вы записаны: ", reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda call: True)
+@bot.callback_query_handler(func=lambda call: call.data.split()[1] == "for_faq")
 def info(call):
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=get_telegrambotcontent&id=4"
     response = requests.get(url)
-    course_id = Courses.objects.get(full_name=call.data).id_course
+    course_id = Courses.objects.get(full_name=call.data.split()[0]).id_course
     courses = json.loads(response.text)
     text = ''
     for course in reversed(courses):
@@ -56,6 +56,46 @@ def info(call):
                 text += f"{question}" + " " + f"{answer}" + "\n"
             break
     bot.send_message(call.message.chat.id, text)
+
+
+@bot.message_handler(commands=['getdeadlines'])
+def get_courses(message):
+    print('get_courses_activate')
+    user = Users.objects.get(id_tg=message.chat.id)
+    id_moodle = user.id_moodle
+    url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_enrol_get_users_courses&userid={id_moodle}&moodlewsrestformat=json"
+    response = requests.get(url)
+    courses = json.loads(response.text)
+    markup = types.InlineKeyboardMarkup()
+    if not courses:
+        bot.send_message(message.chat.id, "вы не записаны ни на один курс")
+    else:
+        text = ""
+        for course in courses:
+            course_name = f"{course['fullname']}"
+            course_id = f"{course['id']}"
+            button1 = types.InlineKeyboardButton(text=course_name, callback_data=f"{course_id} for_deadlines", resize_keyboard=True)
+            markup.add(button1)
+            text += f"{course['fullname']} ({course['shortname']} {course['id']})\n"
+        bot.send_message(message.chat.id, "Курсы на которые вы записаны: ", reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.split()[1] == "for_deadlines")
+def info(call):
+    course_id = call.data.split()[0]
+    url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=mod_assign_get_assignments&courseids[0]={course_id}"
+    response = requests.get(url)
+    content = json.loads(response.text)
+    text = ''
+    assignments = content["courses"][0]["assignments"]
+    for assignment in assignments:
+        name = assignment["name"]
+        deadline = assignment["duedate"]
+        text += f"{name}:       {datetime.datetime.fromtimestamp(deadline)} \n"
+    if len(text) != 0:
+        bot.send_message(call.message.chat.id, text)
+    else:
+        bot.send_message(call.message.chat.id, "заданий нет")
 
 
 @bot.message_handler(commands=['start'])
