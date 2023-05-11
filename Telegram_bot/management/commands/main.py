@@ -34,32 +34,42 @@ def get_courses(message):
         text = ""
         for course in courses:
             course_name = f"{course['fullname']}"
-            button1 = types.InlineKeyboardButton(text=course_name, callback_data=f"{course_name} for_faq", resize_keyboard=True)
+            button1 = types.InlineKeyboardButton(text=course_name, callback_data=f"for_faq {course_name}", resize_keyboard=True)
             markup.add(button1)
             text += f"{course['fullname']} ({course['shortname']} {course['id']})\n"
         bot.send_message(message.chat.id, "Курсы на которые вы записаны: ", reply_markup=markup)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.split()[1] == "for_faq")
-def info(call):
+@bot.callback_query_handler(func=lambda call: call.data.split()[0] == "for_faq")
+def courses_info(call):
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=get_telegrambotcontent&id=4"
     response = requests.get(url)
-    course_id = Courses.objects.get(full_name=call.data.split()[0]).id_course
+    course_id = Courses.objects.get(full_name=call.data.replace('for_faq ', '')).id_course
     courses = json.loads(response.text)
     text = ''
+    markup = types.InlineKeyboardMarkup()
     for course in reversed(courses):
         if int(course['course']) == course_id:
             structure = json.loads(course.get('structure'))
             for content in structure.values():
                 question = content.get('name')
                 answer = content.get('answer')
+                button1 = types.InlineKeyboardButton(text=question, callback_data=f"for_answer {answer}", resize_keyboard=True)
+                markup.add(button1)
                 text += f"{question}" + " " + f"{answer}" + "\n"
             break
+    bot.send_message(call.message.chat.id, "Выберите интересующий вас вопрос:", reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.split()[0] == "for_answer")
+def answers(call):
+    text = call.data.replace('for_answer ', '')
+    print(text)
     bot.send_message(call.message.chat.id, text)
 
 
 @bot.message_handler(commands=['getdeadlines'])
-def get_courses(message):
+def get_deadline(message):
     print('get_courses_activate')
     user = Users.objects.get(id_tg=message.chat.id)
     id_moodle = user.id_moodle
@@ -81,7 +91,7 @@ def get_courses(message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.split()[1] == "for_deadlines")
-def info(call):
+def deadline_info(call):
     course_id = call.data.split()[0]
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=mod_assign_get_assignments&courseids[0]={course_id}"
     response = requests.get(url)
