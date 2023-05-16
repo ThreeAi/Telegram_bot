@@ -95,13 +95,39 @@ def deadline_info(call):
     course_id = call.data.split()[0]
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=mod_assign_get_assignments&courseids[0]={course_id}"
     response = requests.get(url)
-    content = json.loads(response.text)
-    text = ''
-    assignments = content["courses"][0]["assignments"]
+    contentAssigment = json.loads(response.text)
+    tasks = ''
+    assignments = contentAssigment["courses"][0]["assignments"]
     for assignment in assignments:
         name = assignment["name"]
         deadline = assignment["duedate"]
-        text += f"{name}:       {datetime.datetime.fromtimestamp(deadline)} \n"
+        if deadline == 0:
+            deadline = "без дедлайна"
+        elif deadline < datetime.datetime.now().timestamp():
+            continue
+        else:
+            deadline = datetime.datetime.fromtimestamp(deadline)
+        tasks += f"{name}:       {deadline} \n"
+    if len(tasks) != 0:
+        tasks = "задания \n" + tasks
+    url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=mod_quiz_get_quizzes_by_courses&courseids[0]={course_id}"
+    response = requests.get(url)
+    contentQuiz = json.loads(response.text)
+    quizzes = contentQuiz["quizzes"]
+    tests = ''
+    for quiz in quizzes:
+        name = quiz["name"]
+        deadline = quiz["timeclose"]
+        if deadline == 0:
+            deadline = "без дедлайна"
+        elif deadline < datetime.datetime.now().timestamp():
+            continue
+        else:
+            deadline = datetime.datetime.fromtimestamp(deadline)
+        tests += f"{name}:       {deadline} \n"
+    if len(tests) != 0:
+        tests = "тесты \n" + tests
+    text = tasks + tests
     if len(text) != 0:
         bot.send_message(call.message.chat.id, text)
     else:
