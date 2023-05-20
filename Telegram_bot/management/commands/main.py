@@ -15,8 +15,8 @@ bot = telebot.TeleBot(BOT_TOKEN)
 get_course_url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_course_get_courses&moodlewsrestformat=json"
 get_course_response = requests.get(get_course_url)
 all_courses = json.loads(get_course_response.text)
-for course_init in all_courses:
-    course_i, created = Courses.objects.get_or_create(id_course=course_init['id'], short_name=course_init['shortname'], full_name=course_init['fullname'])
+# for course_init in all_courses:
+#     course_i, created = Courses.objects.get_or_create(id_course=course_init['id'], short_name=course_init['shortname'], full_name=course_init['fullname'])
 
 
 @bot.message_handler(commands=['getfaq'])
@@ -142,16 +142,16 @@ def start(message):
     response = requests.get(url)
     id_moodle = json.loads(response.text)
     if (id_moodle == None):
-        bot.send_message(message.chat.id, 'вы не записали свой username')
+        bot.send_message(message.chat.id, 'Вы не записали свой username:(\n\nВам нужно записать свой username телеграмма в личном кабинете образовательного портала для этого: \n1) Зайдите на портал \n2) Зайдите в "О пользователе" -> "Редактировать информацию" -> "Необязательные поля" \n3) Ввести в поле skype ID свой username телеграмма \n4) Сохранить изменения')
     else:
         id_moodle = json.loads(response.text)
         user, created = Users.objects.get_or_create(id_tg=message.chat.id, defaults={'id_moodle': id_moodle})
         if (not created):
             bot.send_message(message.chat.id, "вы уже записаны в базу бота")
-            bot.send_message(message.chat.id, f"{user.id_tg} {user.id_moodle}")
+            #bot.send_message(message.chat.id, f"{user.id_tg} {user.id_moodle}")
         else:
             bot.send_message(message.chat.id, "вac записали в базу бота")
-            bot.send_message(message.chat.id, f"{user.id_tg} {user.id_moodle}")
+            #bot.send_message(message.chat.id, f"{user.id_tg} {user.id_moodle}")
 
 
 bot.polling(none_stop=True)
