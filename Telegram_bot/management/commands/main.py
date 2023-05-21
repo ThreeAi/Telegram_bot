@@ -15,14 +15,21 @@ bot = telebot.TeleBot(BOT_TOKEN)
 get_course_url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_course_get_courses&moodlewsrestformat=json"
 get_course_response = requests.get(get_course_url)
 all_courses = json.loads(get_course_response.text)
-# for course_init in all_courses:
-#     course_i, created = Courses.objects.get_or_create(id_course=course_init['id'], short_name=course_init['shortname'], full_name=course_init['fullname'])
-
+for course_init in all_courses:
+    course = Courses.objects.filter(id_course=course_init['id'])
+    if len(course) == 0:
+        Courses(id_course=course_init['id'], short_name=course_init['shortname'], full_name=course_init['fullname']).save()
+    else:
+        Courses.objects.filter(id_course=course_init['id']).update(short_name=course_init['shortname'], full_name=course_init['fullname'])
 
 @bot.message_handler(commands=['getfaq'])
 def get_courses(message):
-    print('get_courses_activate')
-    user = Users.objects.get(id_tg=message.chat.id)
+    print('get_faq_active')
+    user = Users.objects.filter(id_tg=message.chat.id)
+    if len(user) == 0:
+        bot.send_message(message.chat.id, "Для начала работы с ботом нужно прописать /start")
+        return()
+    user = user[0]
     id_moodle = user.id_moodle
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_enrol_get_users_courses&userid={id_moodle}&moodlewsrestformat=json"
     response = requests.get(url)
@@ -31,12 +38,11 @@ def get_courses(message):
     if not courses:
         bot.send_message(message.chat.id, "вы не записаны ни на один курс")
     else:
-        text = ""
         for course in courses:
             course_name = f"{course['fullname']}"
-            button1 = types.InlineKeyboardButton(text=course_name, callback_data=f"for_faq {course_name}", resize_keyboard=True)
+            course_id = course['id']
+            button1 = types.InlineKeyboardButton(text=course_name, callback_data=f"for_faq {course_id}", resize_keyboard=True)
             markup.add(button1)
-            text += f"{course['fullname']} ({course['shortname']} {course['id']})\n"
         bot.send_message(message.chat.id, "Курсы на которые вы записаны: ", reply_markup=markup)
 
 
@@ -44,19 +50,17 @@ def get_courses(message):
 def courses_info(call):
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&moodlewsrestformat=json&wsfunction=get_telegrambotcontent&id=4"
     response = requests.get(url)
-    course_id = Courses.objects.get(full_name=call.data.replace('for_faq ', '')).id_course
+    course_id = call.data.replace('for_faq ', '')
     courses = json.loads(response.text)
-    text = ''
     markup = types.InlineKeyboardMarkup()
     for course in reversed(courses):
-        if int(course['course']) == course_id:
+        if course['course'] == course_id:
             structure = json.loads(course.get('structure'))
             for content in structure.values():
                 question = content.get('name')
                 answer = content.get('answer')
                 button1 = types.InlineKeyboardButton(text=question, callback_data=f"for_answer {answer}", resize_keyboard=True)
                 markup.add(button1)
-                text += f"{question}" + " " + f"{answer}" + "\n"
             break
     bot.send_message(call.message.chat.id, "Выберите интересующий вас вопрос:", reply_markup=markup)
 
@@ -64,14 +68,17 @@ def courses_info(call):
 @bot.callback_query_handler(func=lambda call: call.data.split()[0] == "for_answer")
 def answers(call):
     text = call.data.replace('for_answer ', '')
-    print(text)
     bot.send_message(call.message.chat.id, text)
 
 
 @bot.message_handler(commands=['getdeadlines'])
 def get_deadline(message):
-    print('get_courses_activate')
-    user = Users.objects.get(id_tg=message.chat.id)
+    print('get_deadlines_activate')
+    user = Users.objects.filter(id_tg=message.chat.id)
+    if len(user) == 0:
+        bot.send_message(message.chat.id, "Для начала работы с ботом нужно прописать /start")
+        return()
+    user = user[0]
     id_moodle = user.id_moodle
     url = f"{MOODLE_URL}/webservice/rest/server.php?wstoken={MOODLE_TOKEN}&wsfunction=core_enrol_get_users_courses&userid={id_moodle}&moodlewsrestformat=json"
     response = requests.get(url)
@@ -148,10 +155,8 @@ def start(message):
         user, created = Users.objects.get_or_create(id_tg=message.chat.id, defaults={'id_moodle': id_moodle})
         if (not created):
             bot.send_message(message.chat.id, "вы уже записаны в базу бота")
-            #bot.send_message(message.chat.id, f"{user.id_tg} {user.id_moodle}")
         else:
             bot.send_message(message.chat.id, "вac записали в базу бота")
-            #bot.send_message(message.chat.id, f"{user.id_tg} {user.id_moodle}")
 
 
-bot.polling(none_stop=True)
+bot.polling(none_stop=True, timeout=20)
